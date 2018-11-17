@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import argparse
+import datetime as dt
+import os
+import shutil
+import sqlite3
 import subprocess as sp
 import sys
-import datetime as dt
-import sqlite3
 
 def matchTag(s, tag):
   '''
@@ -24,6 +27,10 @@ def matchTag(s, tag):
     beg = pos + len(tagEnd)
 
 def getAttr(s, attr):
+  '''
+  Find value of 'attr' in |s|. Assuem format is
+    attr="value"
+  '''
   pos = s.find(attr+'="')
   if pos == -1:
     return
@@ -61,19 +68,67 @@ def getToks(s):
   price = str(int(s[beg:pos]))
   return (vendor, product, note, price)
 
+def userDataDir():
+  map = {
+    'nt': os.environ['LOCALAPPDATA'],
+    'posix': os.environ['HOME']
+  }
+  return os.path.join(map[os.name], '.coolpc')
+
+
+class DB(object):
+  '''
+  Simple warpper for sqlite3 that apply some extra configuation.
+  '''
+  filename = 'coolpc.db'
+  def __init__(self):
+    self.file_path = os.path.join(userDataDir(), DB.filename)
+
+  def connect(self):
+    conn = sqlite3.connect(self.file_path)
+    conn.text_factory = str
+    return conn
+
+def install(reset=False):
+  user_dir = userDataDir()
+  if reset is True:
+    shutil.rmtree(user_dir, True)
+  try:
+    os.makedirs(user_dir)
+  except e:
+    pass
+  shutil.copy(DB.filename, user_dir)
+
+def fetchPage():
+  '''
+  Fetch web page with headless chrome. Assume chrome executble is in shell's
+  search path.
+  '''
+  # TODO: Tweak args for platform other than win
+  return sp.check_output(['chrome', '--headless', '--disable-gpu',
+                          '--dump-dom',
+                          '--enable-logging',
+                          'https://www.coolpc.com.tw/evaluate.php'])
+
+def parseArgs():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('file', nargs='?', help='Read web page from file',
+                      type=file)
+  parser.add_argument('--install', '-i', help='Install user data (db).',
+                      action='store_true')
+  parser.add_argument('--dryrun', '-d', action='store_true')
+  parser.add_argument('--verbose', '-v', action='store_true')
+
+
 def main():
-  db_conn = sqlite3.connect('coolpc.db')
-  db_conn.text_factory = str
-  db_csr = db_conn.cursor()
+  args = parseArgs()
+
+  if args.install is True:
+    install()
+    return
+
   now_str = dt.datetime.now().isoformat()
-  dom = None
-  if len(sys.argv) > 1:
-    with open(sys.argv[1]) as f:
-      dom = f.read()
-  else:
-    dom = sp.check_output(['chrome', '--headless', '--disable-gpu', '--dump-dom',
-                           '--enable-logging',
-                           'https://www.coolpc.com.tw/evaluate.php'])
+  dom = args.file.read() if args.file is not None else fetchPage()
   data = []
   for grp in matchTag(dom, 'optgroup'):
     label = getAttr(grp, 'label').lower()
@@ -88,11 +143,19 @@ def main():
       if 'disabled' in opt:
         continue
       data.append((label,) + getToks(opt) + (now_str,))
-      # print ','.join(data[-1])
+      if args.verbose is True:
+        print ','.join(data[-1])
 
-  if len(data) > 0:
-    db_csr.executemany('insert into VideoCard values (?,?,?,?,?,?)', data)
-    db_conn.commit()
+  if len(data) == 0:
+    return
+
+  if args.dryrun is False:
+    db = DB()
+    with db.connect() as conn:
+      db_csr = conn.cursor()
+      db_csr.executemany('insert into VideoCard values (?,?,?,?,?,?)', data)
 
 if __name__ == '__main__':
+  script_dir = os.path.dirname(os.path.abspath(__file__))
+  os.chdir(script_dir)
   main()
