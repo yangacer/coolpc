@@ -5,6 +5,10 @@ import datetime as dt
 import sqlite3
 
 def matchTag(s, tag):
+  '''
+  Optimistic tags matching. Match result includes tag closure.
+  |s| is string to be matched. |tag| is tag name such as `optgroup`.
+  '''
   tagBeg = '<' + tag
   tagEnd = '</{}>'.format(tag)
   pos = 0
@@ -27,6 +31,10 @@ def getAttr(s, attr):
   return s[pos:s.find('"', pos)]
 
 def getToks(s):
+  '''
+  |s| is string containing multiple option tags of following format:
+    <option ...>Vendor Product Note Price</option>
+  '''
   pos = s.find('>')
   pos += 1
   beg = pos
