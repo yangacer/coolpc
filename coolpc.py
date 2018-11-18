@@ -97,6 +97,10 @@ class DB(object):
 
   def computeDiff(self):
     db_csr = self.conn.cursor()
+    db_csr.execute('select L.*, (((L.price - P.price) * 100.0)/ P.price) as Diff'
+                   ' from LatestPrice as L join PreviousPrice as P on'
+                   ' (L.product == P.product and L.price != P.price)')
+    print db_csr.fetchall()
 
 def install(reset=False):
   user_dir = userDataDir()
@@ -127,13 +131,19 @@ def parseArgs():
                       action='store_true')
   parser.add_argument('--dryrun', '-d', action='store_true')
   parser.add_argument('--verbose', '-v', action='store_true')
+  parser.add_argument('--diff', action='store_true')
   return parser.parse_args()
 
 def main():
   args = parseArgs()
+  db = DB()
 
   if args.install is True:
     install()
+    return
+
+  if args.diff is True:
+    db.computeDiff()
     return
 
   now = dt.datetime.now()
@@ -159,7 +169,7 @@ def main():
     return
 
   if args.dryrun is False:
-    DB().update(data)
+    db.update(data)
 
 if __name__ == '__main__':
   script_dir = os.path.dirname(os.path.abspath(__file__))
