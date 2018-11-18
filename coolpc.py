@@ -83,11 +83,20 @@ class DB(object):
   filename = 'coolpc.db'
   def __init__(self):
     self.file_path = os.path.join(userDataDir(), DB.filename)
+    self.conn = self.connect()
 
   def connect(self):
     conn = sqlite3.connect(self.file_path)
     conn.text_factory = str
     return conn
+
+  def update(self, data):
+    db_csr = self.conn.cursor()
+    db_csr.executemany('insert into VideoCard values (?,?,?,?,?,?)', data)
+    self.conn.commit()
+
+  def computeDiff(self):
+    db_csr = self.conn.cursor()
 
 def install(reset=False):
   user_dir = userDataDir()
@@ -95,7 +104,7 @@ def install(reset=False):
     shutil.rmtree(user_dir, True)
   try:
     os.makedirs(user_dir)
-  except e:
+  except Exception as e:
     pass
   shutil.copy(DB.filename, user_dir)
 
@@ -118,7 +127,7 @@ def parseArgs():
                       action='store_true')
   parser.add_argument('--dryrun', '-d', action='store_true')
   parser.add_argument('--verbose', '-v', action='store_true')
-
+  return parser.parse_args()
 
 def main():
   args = parseArgs()
@@ -127,7 +136,7 @@ def main():
     install()
     return
 
-  now_str = dt.datetime.now().isoformat()
+  now = dt.datetime.now()
   dom = args.file.read() if args.file is not None else fetchPage()
   data = []
   for grp in matchTag(dom, 'optgroup'):
@@ -140,9 +149,9 @@ def main():
       continue
     label = label.replace(' (無類比輸出)', '')
     for opt in matchTag(grp, 'option'):
-      if 'disabled' in opt:
+      if 'disabled' in opt or '支援組裝' in opt or 'class="r"' in opt:
         continue
-      data.append((label,) + getToks(opt) + (now_str,))
+      data.append((label,) + getToks(opt) + (now.isoformat(),))
       if args.verbose is True:
         print ','.join(data[-1])
 
@@ -150,10 +159,7 @@ def main():
     return
 
   if args.dryrun is False:
-    db = DB()
-    with db.connect() as conn:
-      db_csr = conn.cursor()
-      db_csr.executemany('insert into VideoCard values (?,?,?,?,?,?)', data)
+    DB().update(data)
 
 if __name__ == '__main__':
   script_dir = os.path.dirname(os.path.abspath(__file__))
