@@ -133,7 +133,10 @@ def fetchPage():
   search path.
   '''
   # TODO: Tweak args for platform other than win
-  return sp.check_output(['chrome', '--headless', '--disable-gpu',
+  chromePath = 'chrome'
+  if os.name == 'nt':
+    chromePath = 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
+  return sp.check_output([chromePath, '--headless', '--disable-gpu',
                           '--dump-dom',
                           '--enable-logging',
                           'https://www.coolpc.com.tw/evaluate.php'])
