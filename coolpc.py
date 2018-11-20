@@ -112,10 +112,17 @@ class DB(object):
 
   def computeDiff(self):
     db_csr = self.conn.cursor()
-    db_csr.execute('select L.*, (((L.price - P.price) * 100.0)/ P.price) as Diff'
-                   ' from LatestPrice as L join PreviousPrice as P on'
-                   ' (L.product == P.product and L.price != P.price)')
-    return db_csr.fetchall()
+    db_csr.execute('select vendor, product, price, diff from PriceDiff');
+    output = cStringIO.StringIO()
+    for vendor, prod, price, diff in db_csr:
+      print >>output, vendor, prod, price, diff
+    db_csr.execute('select * from Soldout')
+    for (prod,) in db_csr:
+      print >>output, '[soldout]', prod
+    db_csr.execute('select * from NewArrival')
+    for (prod,) in db_csr:
+      print >>output, '[new]', prod
+    return output
 
 def install(reset=False):
   user_dir = userDataDir()
@@ -208,9 +215,13 @@ def main():
   ma = MailAgent()
 
   if args.diff is True:
-    diff = db.computeDiff()
-    for cate, vendor, prod, note, price, date, diff in diff:
-      print prod, price, diff
+    output = db.computeDiff()
+    diff = output.getvalue()
+    if len(diff) > 0:
+      print (diff,)
+    else:
+      print 'No price diff found'
+    output.close()
     return
 
   if args.testmail is True:
@@ -241,16 +252,13 @@ def main():
 
   if args.dryrun is False:
     db.update(data)
-    diff = db.computeDiff()
+    output = db.computeDiff()
+    diff = output.getvalue()
     if len(diff) > 0:
-      output = cStringIO.StringIO()
-      for cate, vendor, prod, note, price, date, diff in diff:
-        print >>output, vendor, prod, price, diff
-      ma.sendDiff(output.getvalue())
-      output.close()
+      ma.sendDiff(diff)
     else:
       print 'No price diff found'
-
+    output.close()
 
 if __name__ == '__main__':
   script_dir = os.path.dirname(os.path.abspath(__file__))
