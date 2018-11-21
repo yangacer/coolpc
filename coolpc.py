@@ -120,8 +120,8 @@ class DB(object):
     for (prod,) in db_csr:
       print >>output, '[soldout]', prod
     db_csr.execute('select * from NewArrival')
-    for (prod,) in db_csr:
-      print >>output, '[new]', prod
+    for (vendor, prod, price) in db_csr:
+      print >>output, '[new]', vendor, prod, price
     return output
 
 def install(reset=False):
