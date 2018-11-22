@@ -115,13 +115,13 @@ class DB(object):
     db_csr.execute('select vendor, product, price, diff from PriceDiff');
     output = cStringIO.StringIO()
     for vendor, prod, price, diff in db_csr:
-      print >>output, vendor, prod, price, diff
+      print >>output, '[discont]', vendor, prod, price, diff
     db_csr.execute('select * from Soldout')
     for (prod,) in db_csr:
       print >>output, '[soldout]', prod
     db_csr.execute('select * from NewArrival')
     for (vendor, prod, price) in db_csr:
-      print >>output, '[new]', vendor, prod, price
+      print >>output, '[arrival]', vendor, prod, price
     return output
 
 def install(reset=False):
