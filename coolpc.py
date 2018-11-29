@@ -65,9 +65,8 @@ def getToks(s):
 
   pos += 1
   beg = pos
-  pos = s.rfind(')', beg)
-  pos += 1
-  product = s[beg:pos]
+  pos = s.find('(', beg)
+  product = s[beg:pos].rstrip()
 
   beg = pos
   pos = s.find(', ', beg)
