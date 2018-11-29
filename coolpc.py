@@ -140,13 +140,14 @@ def fetchPage():
   search path.
   '''
   # TODO: Tweak args for platform other than win
-  chromePath = 'chrome'
+  chromePath = 'chrome.exe'
   if os.name == 'nt':
-    chromePath = 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
-  return sp.check_output([chromePath, '--headless', '--disable-gpu',
-                          '--dump-dom',
-                          '--enable-logging',
-                          'https://www.coolpc.com.tw/evaluate.php'])
+    chromePath = '"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"';
+  cmd = ' '.join([chromePath, '--headless', '--disable-gpu',
+                  '--dump-dom',
+                  '--enable-logging',
+                  'https://www.coolpc.com.tw/evaluate.php'])
+  return sp.Popen(cmd, shell=True, stdout=sp.PIPE).communicate()[0]
 
 class MailAgent(object):
   api_scope = 'https://www.googleapis.com/auth/gmail.send'
